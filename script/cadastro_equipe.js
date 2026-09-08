@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Array de Estado dos Gestores (Inicia Vazio)
-  let managers = [];
+  // 1. Carrega os gestores do localStorage (se existirem) ou inicia lista vazia
+  let managers = JSON.parse(localStorage.getItem("stoa_managers") || "[]");
   let selectedManagerId = null;
 
   // Elementos do DOM
@@ -11,32 +11,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const countPendentes = document.getElementById("countPendentes");
 
   // Modais
-  const formModal = document.getElementById("formModal");
+  const managerModal = document.getElementById("formModal");
   const confirmDeleteModal = document.getElementById("confirmDeleteModal");
   const passwordModal = document.getElementById("passwordModal");
   const resendModal = document.getElementById("resendModal");
-  const successModal = document.getElementById("successModal");
 
-  // Formulário
+  // Formulários
   const managerForm = document.getElementById("managerForm");
   const passwordForm = document.getElementById("passwordForm");
 
-  // 1. Renderiza a Tabela e Atualiza Cards
-  function renderTable(filterText = "") {
+  // Salva no localStorage
+  function saveManagers() {
+    localStorage.setItem("stoa_managers", JSON.stringify(managers));
+  }
+
+  // Renderiza a tabela de Gestores
+  function renderTable() {
+    // Atualiza a lista com o que está gravado no armazenamento
+    managers = JSON.parse(localStorage.getItem("stoa_managers") || "[]");
+
+    if (!tableBody) return;
     tableBody.innerHTML = "";
 
+    const textSearch = searchInput ? searchInput.value.toLowerCase() : "";
+
     const filtered = managers.filter(m => 
-      m.name.toLowerCase().includes(filterText.toLowerCase()) ||
-      m.area.toLowerCase().includes(filterText.toLowerCase()) ||
-      m.email.toLowerCase().includes(filterText.toLowerCase())
+      m.name.toLowerCase().includes(textSearch) ||
+      m.area.toLowerCase().includes(textSearch) ||
+      m.email.toLowerCase().includes(textSearch)
     );
 
     if (filtered.length === 0) {
       tableBody.innerHTML = `
         <tr>
           <td colspan="7">
-            <div class="empty-state">
-              <i data-lucide="users"></i>
+            <div class="empty-state" style="text-align: center; padding: 30px; color: var(--text-muted);">
+              <i data-lucide="users" style="width: 40px; height: 40px; margin-bottom: 10px;"></i>
               <p>Nenhum gestor encontrado.</p>
             </div>
           </td>
@@ -44,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
     } else {
       filtered.forEach(m => {
-        const initials = m.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+        const initials = m.name ? m.name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase() : "GS";
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
@@ -52,14 +62,14 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="user-info">
               <div class="user-avatar">${initials}</div>
               <div class="user-details">
-                <div class="name">${m.name}</div>
-                <div class="email">${m.email}</div>
+                <div class="name" style="font-weight: 600;">${m.name}</div>
+                <div class="email" style="font-size: 0.8rem; color: var(--text-muted);">${m.email}</div>
               </div>
             </div>
           </td>
           <td>${m.area}</td>
           <td>${m.cargo}</td>
-          <td><span class="apprentices-count">${m.aprendizes}</span></td>
+          <td><span class="apprentices-count" style="font-weight: 700;">${m.aprendizes || 0}</span></td>
           <td><span class="badge ${m.role === 'Administrador' ? 'badge-admin' : 'badge-gestor'}">${m.role}</span></td>
           <td>
             <button class="badge ${m.status === 'Ativo' ? 'badge-active' : 'badge-pending'}" onclick="toggleStatus(${m.id})" style="border:none; cursor:pointer;">
@@ -78,135 +88,143 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    // Re-inicializar os Ícones
     if (window.lucide) lucide.createIcons();
 
-    // Atualizar Contadores
-    countGestores.textContent = managers.length;
-    countAreas.textContent = new Set(managers.map(m => m.area.toLowerCase())).size;
-    countPendentes.textContent = managers.filter(m => m.status === "Pendente").length;
+    // Atualiza os cards no topo
+    if (countGestores) countGestores.textContent = managers.length;
+    if (countAreas) countAreas.textContent = new Set(managers.map(m => m.area.toLowerCase())).size;
+    if (countPendentes) countPendentes.textContent = managers.filter(m => m.status === "Pendente").length;
   }
 
-  // 2. Busca em Tempo Real
-  searchInput.addEventListener("input", (e) => {
-    renderTable(e.target.value);
-  });
+  // Evento de Busca
+  if (searchInput) {
+    searchInput.addEventListener("input", renderTable);
+  }
 
-  // 3. Cadastrar ou Editar Gestor
-  document.getElementById("btnOpenAddModal").addEventListener("click", () => {
-    document.getElementById("formModalTitle").textContent = "Cadastrar Gestor";
-    managerForm.reset();
-    document.getElementById("editManagerId").value = "";
-    openModal(formModal);
-  });
+  // --- FUNÇÕES GLOBAIS DE MODAIS (Necessárias para o onclick do HTML) ---
 
-  managerForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const id = document.getElementById("editManagerId").value;
-    const name = document.getElementById("inputName").value;
-    const email = document.getElementById("inputEmail").value;
-    const area = document.getElementById("inputArea").value;
-    const cargo = document.getElementById("inputCargo").value;
-    const role = document.getElementById("selectRole").value;
-    const aprendizes = parseInt(document.getElementById("inputAprendizes").value) || 0;
+  // Abrir Modal de Adicionar Gestor
+  const btnOpenAddModal = document.getElementById("btnOpenAddModal") || document.querySelector(".btn-add-member");
+  if (btnOpenAddModal) {
+    btnOpenAddModal.addEventListener("click", () => {
+      if (managerForm) managerForm.reset();
+      const editIdInput = document.getElementById("editManagerId");
+      if (editIdInput) editIdInput.value = "";
+      openModal(managerModal);
+    });
+  }
 
-    if (id) {
-      // Editar existente
-      const index = managers.findIndex(m => m.id == id);
-      if (index !== -1) {
-        managers[index] = { ...managers[index], name, email, area, cargo, role, aprendizes };
-      }
-    } else {
-      // Criar Novo
-      managers.push({
-        id: Date.now(),
-        name,
-        email,
-        area,
-        cargo,
-        role,
-        aprendizes,
-        status: "Pendente"
-      });
-    }
-
-    closeAllModals();
-    renderTable();
-  });
-
-  // 4. Alternar Status (Ativo / Pendente)
+  // Alternar Status (Ativo / Pendente)
   window.toggleStatus = function(id) {
     const manager = managers.find(m => m.id === id);
     if (manager) {
       manager.status = manager.status === "Ativo" ? "Pendente" : "Ativo";
+      saveManagers();
       renderTable();
     }
   };
 
-  // 5. Editar Modal
+  // Editar Gestor
   window.openEditModal = function(id) {
     const manager = managers.find(m => m.id === id);
     if (!manager) return;
 
-    document.getElementById("formModalTitle").textContent = "Editar Gestor";
     document.getElementById("editManagerId").value = manager.id;
     document.getElementById("inputName").value = manager.name;
     document.getElementById("inputEmail").value = manager.email;
     document.getElementById("inputArea").value = manager.area;
     document.getElementById("inputCargo").value = manager.cargo;
     document.getElementById("selectRole").value = manager.role;
-    document.getElementById("inputAprendizes").value = manager.aprendizes;
 
-    openModal(formModal);
+    openModal(managerModal);
   };
 
-  // 6. Fluxo de Exclusão (Modal 1 -> Modal 2 Senha -> Concluído)
+  // Reenviar Convite
+  window.openResendModal = function(id) {
+    openModal(resendModal);
+  };
+
+  // Abrir Modal de Exclusão
   window.openDeleteModal = function(id) {
     selectedManagerId = id;
     openModal(confirmDeleteModal);
   };
 
-  document.getElementById("btnConfirmDelete").addEventListener("click", () => {
-    closeModal(confirmDeleteModal);
-    openModal(passwordModal);
-  });
+  // Confirmar Exclusão (Passo 1: Abrir Modal de Senha)
+  const btnConfirmDelete = document.getElementById("btnConfirmDelete");
+  if (btnConfirmDelete) {
+    btnConfirmDelete.addEventListener("click", () => {
+      closeModal(confirmDeleteModal);
+      openModal(passwordModal);
+    });
+  }
 
-  passwordForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    managers = managers.filter(m => m.id !== selectedManagerId);
-    document.getElementById("confirmPasswordInput").value = "";
-    closeAllModals();
-    renderTable();
-  });
+  // Submeter Exclusão com Senha (Passo 2)
+  if (passwordForm) {
+    passwordForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      managers = managers.filter(m => m.id !== selectedManagerId);
+      saveManagers();
+      const pwdInput = document.getElementById("confirmPasswordInput");
+      if (pwdInput) pwdInput.value = "";
+      closeAllModals();
+      renderTable();
+    });
+  }
 
-  // 7. Fluxo de Reenviar Convite (Modal 1 -> Modal 2 Sucesso)
-  window.openResendModal = function(id) {
-    selectedManagerId = id;
-    openModal(resendModal);
-  };
+  // Salvar / Cadastrar / Editar Gestor
+  if (managerForm) {
+    managerForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const id = document.getElementById("editManagerId").value;
+      const name = document.getElementById("inputName").value;
+      const email = document.getElementById("inputEmail").value;
+      const area = document.getElementById("inputArea").value;
+      const cargo = document.getElementById("inputCargo").value;
+      const role = document.getElementById("selectRole").value;
 
-  document.getElementById("btnConfirmResend").addEventListener("click", () => {
-    closeModal(resendModal);
-    openModal(successModal);
-  });
+      if (id) {
+        const index = managers.findIndex(m => m.id == id);
+        if (index !== -1) {
+          managers[index] = { ...managers[index], name, email, area, cargo, role };
+        }
+      } else {
+        managers.push({
+          id: Date.now(),
+          name,
+          email,
+          area,
+          cargo,
+          role,
+          aprendizes: 0,
+          status: "Pendente"
+        });
+      }
+
+      saveManagers();
+      closeAllModals();
+      renderTable();
+    });
+  }
 
   // Utilitários de Modal
   function openModal(modal) {
-    modal.classList.add("active");
+    if (modal) modal.classList.add("active");
   }
 
   function closeModal(modal) {
-    modal.classList.remove("active");
+    if (modal) modal.classList.remove("active");
   }
 
   function closeAllModals() {
     document.querySelectorAll(".modal-overlay").forEach(m => m.classList.remove("active"));
   }
 
-  document.querySelectorAll(".closeModalBtn").forEach(btn => {
+  // Botões de Fechar Modal (.closeModalBtn e .btn-close-modal)
+  document.querySelectorAll(".closeModalBtn, .btn-close-modal").forEach(btn => {
     btn.addEventListener("click", closeAllModals);
   });
 
-  // Renderização Inicial (Com Tabela Vazia)
+  // Inicialização
   renderTable();
 });
