@@ -54,7 +54,11 @@ document.addEventListener("DOMContentLoaded", () => {
   ];
 
   // Garante que nenhum item comece selecionado (começa array vazio [])
-  let selectedProjectIds = JSON.parse(localStorage.getItem("stoa_selected_track") || "[]");
+  // Limpa seleções residuais do LocalStorage para garantir que tudo comece desmarcado
+  localStorage.removeItem("stoa_selected_track");
+
+  // Inicia explicitamente com um array vazio
+  let selectedProjectIds = [];
 
   // DOM
   const availableGrid = document.getElementById("availableProjectsGrid");

@@ -7,18 +7,27 @@
   --text-muted: #64748b;
   --border-color: #e2e8f0;
   --input-bg: #f1f5f9;
-  --btn-radius: 50px; /* Arredondamento padrão da tela de login */
+  --btn-radius: 50px;
   --card-radius: 16px;
 }
 
-/* Suporte ao Tema Escuro */
-body.dark-theme {
+/* Suporte completo ao Tema Escuro (Suporta ambas as abordagens de classe ou atributo) */
+body.dark-theme,
+html[data-theme="dark"] body {
   --bg-color: #0f172a;
   --card-bg: #1e293b;
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --border-color: #334155;
   --input-bg: #334155;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 body {
