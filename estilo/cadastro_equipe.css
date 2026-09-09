@@ -148,7 +148,7 @@
 }
 
 .employee-table th {
-  background-color: var(--table-header-bg);
+  background-color: var(--hover-bg);
   padding: 12px 16px;
   font-size: 0.8rem;
   font-weight: 700;

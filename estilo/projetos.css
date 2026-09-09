@@ -1,11 +1,4 @@
 :root {
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --bg-color: #f8fafc;
-  --card-bg: #ffffff;
-  --text-main: #1e293b;
-  --text-muted: #64748b;
-  --border-color: #e2e8f0;
   --input-bg: #f1f5f9;
   --btn-radius: 50px;
   --card-radius: 16px;
@@ -14,13 +7,8 @@
 /* Suporte completo ao Tema Escuro (Suporta ambas as abordagens de classe ou atributo) */
 body.dark-theme,
 html[data-theme="dark"] body {
-  --bg-color: #0f172a;
-  --card-bg: #1e293b;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --border-color: #334155;
   --input-bg: #334155;
-}
+} 
 
 body {
   margin: 0;
